@@ -1,0 +1,85 @@
+import re
+from datetime import datetime
+
+# Database to store bookings (in a real app, this would be a proper database)
+bookings = []
+
+def validate_email(email):
+    """Validate the format of an email address"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def create_booking(name, email, booking_date, booking_time, num_people):
+    """
+    Create a new booking with validation
+    
+    Args:
+        name: Customer name
+        email: Customer email (mandatory)
+        booking_date: Date in YYYY-MM-DD format
+        booking_time: Time in HH:MM format
+        num_people: Number of people for the booking
+        
+    Returns:
+        Dictionary with booking details or error message
+    """
+    # Validate email is provided and correct format
+    if not email:
+        return {"status": "error", "message": "Email is mandatory for booking"}
+    
+    if not validate_email(email):
+        return {"status": "error", "message": "Invalid email format"}
+    
+    # Validate other fields
+    if not name or not booking_date or not booking_time or not num_people:
+        return {"status": "error", "message": "All fields are required"}
+    
+    try:
+        # Parse and validate date/time
+        booking_datetime = datetime.strptime(f"{booking_date} {booking_time}", "%Y-%m-%d %H:%M")
+        if booking_datetime < datetime.now():
+            return {"status": "error", "message": "Booking date/time must be in the future"}
+    except ValueError:
+        return {"status": "error", "message": "Invalid date/time format. Use YYYY-MM-DD and HH:MM"}
+    
+    # Create booking
+    booking_id = len(bookings) + 1
+    booking = {
+        "id": booking_id,
+        "name": name,
+        "email": email,
+        "date": booking_date,
+        "time": booking_time,
+        "num_people": num_people,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    
+    bookings.append(booking)
+    return {"status": "success", "message": "Booking created successfully", "booking": booking}
+
+def get_booking_by_email(email):
+    """Retrieve all bookings for a given email address"""
+    if not email:
+        return {"status": "error", "message": "Email is required"}
+    
+    if not validate_email(email):
+        return {"status": "error", "message": "Invalid email format"}
+    
+    customer_bookings = [b for b in bookings if b["email"] == email]
+    return {"status": "success", "bookings": customer_bookings}
+
+def cancel_booking(booking_id, email):
+    """Cancel a booking by ID if it belongs to the provided email"""
+    if not email:
+        return {"status": "error", "message": "Email is required"}
+    
+    if not validate_email(email):
+        return {"status": "error", "message": "Invalid email format"}
+    
+    for i, booking in enumerate(bookings):
+        if booking["id"] == booking_id and booking["email"] == email:
+            cancelled_booking = bookings.pop(i)
+            return {"status": "success", "message": "Booking cancelled", "booking": cancelled_booking}
+    
+    return {"status": "error", "message": "Booking not found or email doesn't match"}
+
